@@ -5,6 +5,10 @@ checkpoints/*
 **/__pycache__
 .vscode
 
+# Data files
+*.npy
+*.pkl
+
 *.swp
 *.swn
 *.swo
