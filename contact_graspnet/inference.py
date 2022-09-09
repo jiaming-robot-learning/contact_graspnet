@@ -67,8 +67,15 @@ def inference(global_config, checkpoint_dir, input_paths, K=None, local_regions=
             print('Converting depth to point cloud(s)...')
             pc_full, pc_segments, pc_colors = grasp_estimator.extract_point_clouds(depth, cam_K, segmap=segmap, rgb=rgb,
                                                                                     skip_border_objects=skip_border_objects, z_range=z_range)
+        else:
+            segmap = segmap.reshape(-1)
+            for i in np.unique(segmap):
+                if i == 0: continue
+                else:
+                    pc_segments[i] = pc_full[segmap == i]
 
         print('Generating Grasps...')
+        breakpoint()
         pred_grasps_cam, scores, contact_pts, _ = grasp_estimator.predict_scene_grasps(sess, pc_full, pc_segments=pc_segments, 
                                                                                           local_regions=local_regions, filter_grasps=filter_grasps, forward_passes=forward_passes)  
 
@@ -78,6 +85,7 @@ def inference(global_config, checkpoint_dir, input_paths, K=None, local_regions=
 
         # Visualize results          
         show_image(rgb, segmap)
+        print(pred_grasps_cam)
         visualize_grasps(pc_full, pred_grasps_cam, scores, plot_opencv_cam=True, pc_colors=pc_colors)
         
     if not glob.glob(input_paths):

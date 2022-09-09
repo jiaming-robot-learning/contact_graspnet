@@ -320,7 +320,6 @@ def load_available_input_data(p, K=None):
                 pc_full = data
             else:
                 depth = data
-
         if 'depth' in keys:
             depth = data['depth']
             if K is None and 'K' in keys:
@@ -330,12 +329,13 @@ def load_available_input_data(p, K=None):
             if 'seg' in keys:    
                 segmap = data['seg']
             if 'rgb' in keys:    
-                rgb = data['rgb']
+                rgb = data['rgb'].astype(np.uint8)
                 rgb = np.array(cv2.cvtColor(rgb, cv2.COLOR_BGR2RGB))
-        elif 'xyz' in keys:
+        # Load xyz if both it and depth exist
+        if 'xyz' in keys:
             pc_full = np.array(data['xyz']).reshape(-1,3)
             if 'xyz_color' in keys:
-                pc_colors = data['xyz_color']
+                pc_colors = data['xyz_color'].reshape(-1, 3)
     elif '.png' in p:
         if os.path.exists(p.replace('depth', 'label')):
             # graspnet data
