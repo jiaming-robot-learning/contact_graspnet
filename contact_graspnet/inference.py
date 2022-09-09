@@ -68,11 +68,11 @@ def inference(global_config, checkpoint_dir, input_paths, K=None, local_regions=
             pc_full, pc_segments, pc_colors = grasp_estimator.extract_point_clouds(depth, cam_K, segmap=segmap, rgb=rgb,
                                                                                     skip_border_objects=skip_border_objects, z_range=z_range)
         else:
-            segmap = segmap.reshape(-1)
-            for i in np.unique(segmap):
+            pc_segmap = segmap.reshape(-1)
+            for i in np.unique(pc_segmap):
                 if i == 0: continue
                 else:
-                    pc_segments[i] = pc_full[segmap == i]
+                    pc_segments[i] = pc_full[pc_segmap == i]
 
         print('Generating Grasps...')
         breakpoint()
