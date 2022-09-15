@@ -20,6 +20,9 @@ from data import regularize_pc_point_count, depth2pc, load_available_input_data
 from contact_grasp_estimator import GraspEstimator
 from visualization_utils import visualize_grasps, show_image
 
+from home_robot.ros.grasp_helper import GraspServer
+
+
 def inference(global_config, checkpoint_dir, input_paths, K=None, local_regions=True, skip_border_objects=False, filter_grasps=True, segmap_id=None, z_range=[0.2,1.8], forward_passes=1):
     """
     Predict 6-DoF grasp distribution for given model and input data
@@ -53,6 +56,8 @@ def inference(global_config, checkpoint_dir, input_paths, K=None, local_regions=
     grasp_estimator.load_weights(sess, saver, checkpoint_dir, mode='test')
     
     os.makedirs('results', exist_ok=True)
+
+    server = GraspServer()
 
     # Process example test scenes
     for p in glob.glob(input_paths):
