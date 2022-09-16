@@ -1,5 +1,6 @@
 import rospy
 from home_robot.ros.grasp_helper import GraspClient
+from data import regularize_pc_point_count, depth2pc, load_available_input_data
 
 rospy.init_node('test_grasping')
 p = "stretch_2022_09_14-12_51_59.npy"
