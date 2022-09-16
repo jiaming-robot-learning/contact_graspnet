@@ -9,9 +9,13 @@ checkpoints/*
 *.npy
 *.pkl
 
+
+
 *.swp
 *.swn
 *.swo
 
+# Compiled things
 *.o
 *.cu.o
+*.so
