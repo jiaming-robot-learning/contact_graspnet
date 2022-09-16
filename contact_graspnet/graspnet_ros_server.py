@@ -59,6 +59,7 @@ def inference(global_config, checkpoint_dir, input_paths, K=None, local_regions=
 
     def get_grasps(pc_full, pc_colors, segmap):
         pc_segmap = segmap.reshape(-1)
+        pc_segments = {}
         for i in np.unique(pc_segmap):
             if i == 0: continue
             else:
@@ -70,7 +71,7 @@ def inference(global_config, checkpoint_dir, input_paths, K=None, local_regions=
                                                                                        filter_grasps=filter_grasps,
                                                                                        forward_passes=forward_passes)  
         # show_image(rgb, segmap)
-        visualize_grasps(pc_full, pred_grasps_cam, scores, plot_opencv_cam=True, pc_colors=pc_colors)
+        # visualize_grasps(pc_full, pred_grasps_cam, scores, plot_opencv_cam=True, pc_colors=pc_colors)
         return pred_grasps_cam, scores
 
     server = GraspServer(get_grasps)
