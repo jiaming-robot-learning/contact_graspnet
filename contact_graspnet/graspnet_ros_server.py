@@ -10,6 +10,7 @@ import cv2
 import home_robot
 import home_robot.ros
 from home_robot.ros.grasp_helper import GraspServer
+import trimesh.transformations as tra
 
 import tensorflow.compat.v1 as tf
 tf.disable_eager_execution()
@@ -89,8 +90,19 @@ def inference(global_config, checkpoint_dir, K=None, local_regions=True, skip_bo
         # apply the correction here 
         grasps = {}
         for k, v in pred_grasps_cam.items():
+            fixed = np.zeros_like(v)
             print(k, v.shape)
-        return pred_grasps_cam, scores
+            fix = tra.euler_matrix(0, 0,  -np.pi/2)
+            for i in range(v.shape[0]):
+                fixed[i] = fix @ v[i]
+                # print(i, v[i,:3,3], fixed[i,:3, 3])
+                # pt = fix.T @ v[i, :, 3]
+                pt = fixed[i, :3, 3]
+                print(i, scores[k][i], pt)
+                #fixed[i, :3, 3] = pt[:3]
+            grasps[k] = fixed
+        #return pred_grasps_cam, scores
+        return grasps, scores
 
     server = GraspServer(get_grasps)
     rospy.spin()
