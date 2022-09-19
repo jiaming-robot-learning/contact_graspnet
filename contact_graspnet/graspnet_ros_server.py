@@ -39,7 +39,7 @@ def setup_gpu():
         print(e)
 
 
-def inference(global_config, checkpoint_dir, input_paths, K=None, local_regions=True, skip_border_objects=False, filter_grasps=True, segmap_id=None, z_range=[0.2,1.8], forward_passes=1):
+def inference(global_config, checkpoint_dir, K=None, local_regions=True, skip_border_objects=False, filter_grasps=True, segmap_id=None, z_range=[0.2,1.8], forward_passes=1):
     """
     Predict 6-DoF grasp distribution for given model and input data
     
@@ -118,7 +118,7 @@ if __name__ == "__main__":
     print(str(global_config))
     print('pid: %s'%(str(os.getpid())))
 
-    inference(global_config, FLAGS.ckpt_dir, FLAGS.np_path if not FLAGS.png_path else FLAGS.png_path, z_range=eval(str(FLAGS.z_range)),
+    inference(global_config, FLAGS.ckpt_dir, z_range=eval(str(FLAGS.z_range)),
                 K=FLAGS.K, local_regions=FLAGS.local_regions, filter_grasps=FLAGS.filter_grasps, segmap_id=FLAGS.segmap_id, 
                 forward_passes=FLAGS.forward_passes, skip_border_objects=FLAGS.skip_border_objects)
 
