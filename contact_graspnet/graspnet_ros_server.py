@@ -86,6 +86,10 @@ def inference(global_config, checkpoint_dir, K=None, local_regions=True, skip_bo
                                                                                        forward_passes=forward_passes)  
         # show_image(rgb, segmap)
         #visualize_grasps(pc_full, pred_grasps_cam, scores, plot_opencv_cam=True, pc_colors=pc_colors)
+        # apply the correction here 
+        grasps = {}
+        for k, v in pred_grasps_cam.items():
+            print(k, v.shape)
         return pred_grasps_cam, scores
 
     server = GraspServer(get_grasps)
