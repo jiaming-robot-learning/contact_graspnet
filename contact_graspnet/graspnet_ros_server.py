@@ -91,14 +91,14 @@ def inference(global_config, checkpoint_dir, K=None, local_regions=True, skip_bo
         grasps = {}
         for k, v in pred_grasps_cam.items():
             fixed = np.zeros_like(v)
-            print(k, v.shape)
+            # print(k, v.shape)
             fix = tra.euler_matrix(0, 0,  -np.pi/2)
             for i in range(v.shape[0]):
                 fixed[i] = fix @ v[i]
                 # print(i, v[i,:3,3], fixed[i,:3, 3])
                 # pt = fix.T @ v[i, :, 3]
                 pt = fixed[i, :3, 3]
-                print(i, scores[k][i], pt)
+                # print(i, scores[k][i], pt)
                 #fixed[i, :3, 3] = pt[:3]
             grasps[k] = fixed
         #return pred_grasps_cam, scores
