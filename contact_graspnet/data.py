@@ -320,7 +320,10 @@ def load_available_input_data(p, K=None):
                 keys = []
                 data = {}
                 for k, v in old_data.items():
-                    key = k.decode('utf-8')
+                    if not isinstance(k, str):
+                        key = k.decode('utf-8')
+                    else:
+                        key = k
                     keys.append(key)
                     data[key] = v
             elif data.shape[-1] == 3:
