@@ -8,8 +8,8 @@ import glob
 import cv2
 
 import home_robot
-import home_robot.hw.ros
-from home_robot.hw.ros.grasp_helper import GraspServer
+import home_robot_hw.ros
+from home_robot_hw.ros.grasp_helper import GraspServer
 import trimesh.transformations as tra
 
 import tensorflow.compat.v1 as tf
