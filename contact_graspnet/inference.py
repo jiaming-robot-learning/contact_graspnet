@@ -7,6 +7,8 @@ import glob
 import cv2
 
 import tensorflow.compat.v1 as tf
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
+
 tf.disable_eager_execution()
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)

@@ -19,3 +19,6 @@ checkpoints/*
 *.o
 *.cu.o
 *.so
+
+cgn_env
+test_data

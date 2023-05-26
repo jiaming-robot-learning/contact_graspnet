@@ -45,7 +45,7 @@ Given a .npy/.npz file with a depth map (in meters), camera matrix K and (option
 
 ```shell
 python contact_graspnet/inference.py \
-       --np_path=test_data/*.npy \
+       --np_path=test_data/0.npy \
        --local_regions --filter_grasps
 ```
 
