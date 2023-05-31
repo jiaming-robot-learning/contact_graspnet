@@ -117,7 +117,9 @@ class CGNClient():
         """
         send_message(self.socket, data)
         response = recv_message(self.socket)
-        return response
+        grasps = response[0].item()
+        scores = response[1].item()
+        return grasps, scores
 
 class CGNServer():
     def __init__(self,process_fn,socket_path=None) -> None:

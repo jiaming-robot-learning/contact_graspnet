@@ -50,7 +50,7 @@ def run_cgn_server(process_fn):
 
 
 
-def inference(global_config, checkpoint_dir, local_regions=True, skip_border_objects=False, filter_grasps=True, segmap_id=None, z_range=[0.2,1.8], forward_passes=1):
+def inference(global_config, checkpoint_dir, local_regions=True, skip_border_objects=False, filter_grasps=True, z_range=[0.2,1.8], forward_passes=1):
     """
     Predict 6-DoF grasp distribution for given model and input data
     
@@ -89,14 +89,15 @@ def inference(global_config, checkpoint_dir, local_regions=True, skip_border_obj
     #         else:
     #             pc_segments[i] = pc_full[pc_segmap == i]
 
-    def get_grasps(rgb,depth,segmap,cam_K):
+    def get_grasps(rgb,depth,segmap,cam_K,segmap_ids=None):
         depth = depth.squeeze(-1)
         segmap = segmap.squeeze(-1)
         
         print('Converting depth to point cloud(s)...')
         pc_full, pc_segments, pc_colors = grasp_estimator.extract_point_clouds(depth, cam_K, segmap=segmap, rgb=rgb,
                                                                                     skip_border_objects=skip_border_objects, z_range=z_range)
-
+        if segmap_ids is not None:
+           pc_segments = {segmap_id: pc_segments[segmap_id] for segmap_id in segmap_ids}
         pred_grasps_cam, scores, contact_pts, _ = grasp_estimator.predict_scene_grasps(sess, pc_full,
                                                                                        pc_segments=pc_segments, 
                                                                                        local_regions=local_regions,
@@ -104,22 +105,29 @@ def inference(global_config, checkpoint_dir, local_regions=True, skip_border_obj
                                                                                        forward_passes=forward_passes)  
         # show_image(rgb, segmap)
         # visualize_grasps(pc_full, pred_grasps_cam, scores, plot_opencv_cam=True, pc_colors=pc_colors)
+
         # apply the correction here 
-        grasps = {}
-        for k, v in pred_grasps_cam.items():
-            fixed = np.zeros_like(v)
-            # print(k, v.shape)
-            fix = tra.euler_matrix(0, 0,  -np.pi/2)
-            for i in range(v.shape[0]):
-                fixed[i] = fix @ v[i]
-                # print(i, v[i,:3,3], fixed[i,:3, 3])
-                # pt = fix.T @ v[i, :, 3]
-                pt = fixed[i, :3, 3]
-                # print(i, scores[k][i], pt)
-                #fixed[i, :3, 3] = pt[:3]
-            grasps[k] = fixed
-        #return pred_grasps_cam, scores
-        return grasps, scores
+        # grasps = {}
+        # for k, v in pred_grasps_cam.items():
+        #     # fixed = v.copy()
+        #     # fixed[:,[0,1]] = v[:,[1,0]]
+
+        #     fixed = np.zeros_like(v)
+        #     # print(k, v.shape)
+        #     fix = tra.euler_matrix(0, 0, -np.pi/2  )
+        #     for i in range(v.shape[0]):
+        #         fixed[i] = fix @ v[i]
+        #         # print(i, v[i,:3,3], fixed[i,:3, 3])
+        #         # pt = fix.T @ v[i, :, 3]
+        #         pt = fixed[i, :3, 3]
+        #         # print(i, scores[k][i], pt)
+        #         #fixed[i, :3, 3] = pt[:3]
+        #     grasps[k] = fixed
+        # return grasps, scores
+        # show_image(rgb, segmap)
+        # visualize_grasps(pc_full, grasps, scores, plot_opencv_cam=True, pc_colors=pc_colors)
+        
+        return pred_grasps_cam, scores
 
 
     run_cgn_server(get_grasps)
@@ -132,8 +140,8 @@ if __name__ == "__main__":
     parser.add_argument('--ckpt_dir', default='checkpoints/scene_test_2048_bs3_hor_sigma_001', help='Log dir [default: checkpoints/scene_test_2048_bs3_hor_sigma_001]')
     parser.add_argument('--K', default=None, help='Flat Camera Matrix, pass as "[fx, 0, cx, 0, fy, cy, 0, 0 ,1]"')
     parser.add_argument('--z_range', default=[0.2,1.8], help='Z value threshold to crop the input point cloud')
-    parser.add_argument('--local_regions', action='store_true', default=False, help='Crop 3D local regions around given segments.')
-    parser.add_argument('--filter_grasps', action='store_true', default=False,  help='Filter grasp contacts according to segmap.')
+    parser.add_argument('--local_regions', action='store_true', default=True, help='Crop 3D local regions around given segments.')
+    parser.add_argument('--filter_grasps', action='store_true', default=True,  help='Filter grasp contacts according to segmap.')
     parser.add_argument('--skip_border_objects', action='store_true', default=False,  help='When extracting local_regions, ignore segments at depth map boundary.')
     parser.add_argument('--forward_passes', type=int, default=1,  help='Run multiple parallel forward passes to mesh_utils more potential contact points.')
     parser.add_argument('--segmap_id', type=int, default=0,  help='Only return grasps of the given object id')
@@ -146,7 +154,7 @@ if __name__ == "__main__":
     print('pid: %s'%(str(os.getpid())))
 
     inference(global_config, FLAGS.ckpt_dir, z_range=eval(str(FLAGS.z_range)),
-                local_regions=FLAGS.local_regions, filter_grasps=FLAGS.filter_grasps, segmap_id=FLAGS.segmap_id, 
+                local_regions=FLAGS.local_regions, filter_grasps=FLAGS.filter_grasps,
                 forward_passes=FLAGS.forward_passes, skip_border_objects=FLAGS.skip_border_objects)
 
 

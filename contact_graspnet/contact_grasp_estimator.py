@@ -12,6 +12,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(BASE_DIR))
 sys.path.append(os.path.join(BASE_DIR, 'pointnet2',  'utils'))
 sys.path.append(os.path.abspath(__file__))
+from visualization_utils import visualize_grasps, show_image, draw_pc_with_colors
 
 from tf_train_ops import get_bn_decay
 import config_utils
@@ -164,7 +165,7 @@ class GraspEstimator:
         return pc_regions, obj_centers
 
 
-    def predict_grasps(self, sess, pc, constant_offset=False, convert_cam_coords=True, forward_passes=1):
+    def predict_grasps(self, sess, pc, constant_offset=False, convert_cam_coords=True, forward_passes=1,pc_segment=None):
         """
         Predict raw grasps on point cloud
 
@@ -207,16 +208,6 @@ class GraspEstimator:
 
         with_replacement = self._contact_grasp_cfg['TEST']['with_replacement'] if 'with_replacement' in self._contact_grasp_cfg['TEST'] else False
         
-        selection_idcs = self.select_grasps(pred_points[:,:3], pred_scores, 
-                                            self._contact_grasp_cfg['TEST']['max_farthest_points'], 
-                                            self._contact_grasp_cfg['TEST']['num_samples'], 
-                                            self._contact_grasp_cfg['TEST']['first_thres'], 
-                                            self._contact_grasp_cfg['TEST']['second_thres'] if 'second_thres' in self._contact_grasp_cfg['TEST'] else self._contact_grasp_cfg['TEST']['first_thres'], 
-                                            with_replacement=self._contact_grasp_cfg['TEST']['with_replacement'])
-
-        if not np.any(selection_idcs):
-            selection_idcs=np.array([], dtype=np.int32)
-
         if 'center_to_tip' in self._contact_grasp_cfg['TEST'] and self._contact_grasp_cfg['TEST']['center_to_tip']:
             pred_grasps_cam[:,:3, 3] -= pred_grasps_cam[:,:3,2]*(self._contact_grasp_cfg['TEST']['center_to_tip']/2)
         
@@ -224,6 +215,44 @@ class GraspEstimator:
         if convert_cam_coords:
             pred_grasps_cam[:,:2, :] *= -1
             pred_points[:,:2] *= -1
+
+        ###########################################
+        # we should first filter out the grasps that are not for the target object
+        if pc_segment is not None:
+            segment_idcs = self.filter_segment(pred_points, pc_segment, thres=self._contact_grasp_cfg['TEST']['filter_thres'])
+            pred_grasps_cam = pred_grasps_cam[segment_idcs]
+            pred_scores = pred_scores[segment_idcs]
+            pred_points = pred_points[segment_idcs]
+            try:
+                gripper_openings = gripper_openings[segment_idcs]
+            except:
+                print('skipped gripper openings {}'.format(gripper_openings))
+
+        ###########################################
+
+        # then we select the grasps
+        selection_idcs = self.select_grasps(pred_points[:,:3], pred_scores, 
+                                            self._contact_grasp_cfg['TEST']['max_farthest_points'], 
+                                            self._contact_grasp_cfg['TEST']['num_samples'], 
+                                            self._contact_grasp_cfg['TEST']['first_thres'], 
+                                            self._contact_grasp_cfg['TEST']['second_thres'] if 'second_thres' in self._contact_grasp_cfg['TEST'] else self._contact_grasp_cfg['TEST']['first_thres'], 
+                                            with_replacement=self._contact_grasp_cfg['TEST']['with_replacement'])
+        
+        first_thres = self._contact_grasp_cfg['TEST']['first_thres'] 
+        second_thres = self._contact_grasp_cfg['TEST']['second_thres']  if 'second_thres' in self._contact_grasp_cfg['TEST'] else first_thres
+        while len(selection_idcs)<5:
+            print('No grasps found, lower the threshold')
+            first_thres -= 0.2
+            second_thres -= 0.3
+            selection_idcs = self.select_grasps(pred_points[:,:3], pred_scores, 
+                                            self._contact_grasp_cfg['TEST']['max_farthest_points'], 
+                                            self._contact_grasp_cfg['TEST']['num_samples'], 
+                                            first_thres, 
+                                            second_thres, 
+                                            with_replacement=self._contact_grasp_cfg['TEST']['with_replacement'])
+
+            if first_thres < 0:
+                break
 
         return pred_grasps_cam[selection_idcs], pred_scores[selection_idcs], pred_points[selection_idcs].squeeze(), gripper_openings[selection_idcs].squeeze()
 
@@ -251,7 +280,7 @@ class GraspEstimator:
         if local_regions:
             pc_regions, _ = self.extract_3d_cam_boxes(pc_full, pc_segments)
             for k, pc_region in pc_regions.items():
-                pred_grasps_cam[k], scores[k], contact_pts[k], gripper_openings[k] = self.predict_grasps(sess, pc_region, convert_cam_coords=True, forward_passes=forward_passes)
+                pred_grasps_cam[k], scores[k], contact_pts[k], gripper_openings[k] = self.predict_grasps(sess, pc_region, convert_cam_coords=True, forward_passes=forward_passes,pc_segment=pc_segments[k])
         else:
             pc_full = regularize_pc_point_count(pc_full, self._contact_grasp_cfg['DATA']['raw_num_points'])
             pred_grasps_cam[-1], scores[-1], contact_pts[-1], gripper_openings[-1] = self.predict_grasps(sess, pc_full, convert_cam_coords=True, forward_passes=forward_passes)
@@ -263,15 +292,16 @@ class GraspEstimator:
             for k in segment_keys:
                 j = k if local_regions else -1
                 if np.any(pc_segments[k]) and np.any(contact_pts[j]):
-                    segment_idcs = self.filter_segment(contact_pts[j], pc_segments[k], thres=self._contact_grasp_cfg['TEST']['filter_thres'])
+                    # CHANGED BY JM: filtered before selecting grasps
 
-                    pred_grasps_cam[k] = pred_grasps_cam[j][segment_idcs]
-                    scores[k] = scores[j][segment_idcs]
-                    contact_pts[k] = contact_pts[j][segment_idcs]
-                    try:
-                        gripper_openings[k] = gripper_openings[j][segment_idcs]
-                    except:
-                        print('skipped gripper openings {}'.format(gripper_openings[j]))
+                    # segment_idcs = self.filter_segment(contact_pts[j], pc_segments[k], thres=self._contact_grasp_cfg['TEST']['filter_thres'])
+                    # pred_grasps_cam[k] = pred_grasps_cam[j][segment_idcs]
+                    # scores[k] = scores[j][segment_idcs]
+                    # contact_pts[k] = contact_pts[j][segment_idcs]
+                    # try:
+                    #     gripper_openings[k] = gripper_openings[j][segment_idcs]
+                    # except:
+                    #     print('skipped gripper openings {}'.format(gripper_openings[j]))
 
                     if local_regions and np.any(pred_grasps_cam[k]):
                         print('Generated {} grasps for object {}'.format(len(pred_grasps_cam[k]), k))
